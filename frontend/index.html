@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio Ledger — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFAF8;
+    --paper-dim: #F1F0EB;
+    --ink: #161B22;
+    --muted: #6B7280;
+    --rule: #DEDDD5;
+    --brick: #B5462F;
+    --teal: #2F6E62;
+    --amber: #A8722F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Masthead */
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 18px;
+    margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 6px;
+  }
+  h1.title {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 44px);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1.title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--brick);
+  }
+
+  /* Ticker tape */
+  .ticker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    padding: 10px 0 24px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 32px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .ticker span { margin-right: 22px; }
+  .ticker b { color: var(--ink); }
+
+  /* Layout */
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 40px;
+  }
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* Input panel */
+  .panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  textarea {
+    width: 100%;
+    height: 320px;
+    background: var(--paper-dim);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    padding: 12px;
+    resize: vertical;
+  }
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  button {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  button:hover { opacity: 0.82; }
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #apiBase {
+    width: 100%;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--rule);
+    background: var(--paper-dim);
+    color: var(--muted);
+  }
+
+  #status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 16px;
+  }
+  #status.err { color: var(--brick); }
+  #status.ok { color: var(--teal); }
+
+  /* Results */
+  .fig-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  section.fig {
+    padding-top: 24px;
+    margin-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+  section.fig:first-child { margin-top: 0; border-top: none; padding-top: 0; }
+
+  .metric-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .metric-card {
+    background: var(--paper);
+    padding: 16px;
+  }
+  .metric-card .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .metric-card .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-card .value.brick { color: var(--brick); }
+  .metric-card .value.teal { color: var(--teal); }
+
+  .sector-row {
+    display: flex;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .sector-name { width: 120px; flex-shrink: 0; color: var(--muted); }
+  .sector-bar-track {
+    flex: 1;
+    background: var(--paper-dim);
+    height: 14px;
+    position: relative;
+  }
+  .sector-bar-fill {
+    background: var(--ink);
+    height: 100%;
+  }
+  .sector-pct { width: 52px; text-align: right; flex-shrink: 0; }
+
+  table.corr {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  table.corr th, table.corr td {
+    border: 1px solid var(--rule);
+    padding: 7px 9px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  table.corr th:first-child, table.corr td:first-child { text-align: left; color: var(--muted); }
+  table.corr th { color: var(--muted); font-weight: 500; }
+
+  .summary-card {
+    background: var(--paper-dim);
+    border-left: 3px solid var(--amber);
+    padding: 20px 22px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .summary-card p { margin: 0 0 12px; }
+  .summary-card p:last-child { margin-bottom: 0; }
+
+  .empty-state {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    padding: 40px 0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">AI-Generated · Grounded in Computed Metrics</p>
+    <h1 class="title">Portfolio <em>Ledger</em></h1>
+  </header>
+
+  <div class="ticker" id="ticker">
+    <span>Load a portfolio to populate holdings —</span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="panel-label">01 — Portfolio Payload (JSON)</div>
+      <textarea id="payload" spellcheck="false"></textarea>
+      <div class="btn-row">
+        <button id="loadSample" class="secondary">Load sample</button>
+        <button id="submit">Generate summary</button>
+      </div>
+      <input id="apiBase" value="http://127.0.0.1:8000" />
+      <div id="status"></div>
+    </div>
+
+    <div id="results">
+      <div class="empty-state">No results yet. Load the sample portfolio and click "Generate summary" — the backend must be running at the API base URL on the left.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SAMPLE = {
+  "portfolio_id": "demo-portfolio-001",
+  "benchmark_ticker": "SPY",
+  "holdings": [
+    {"ticker": "AAPL", "sector": "Technology", "shares": 50, "price": 210.50, "beta": 1.2},
+    {"ticker": "MSFT", "sector": "Technology", "shares": 30, "price": 445.20, "beta": 1.1},
+    {"ticker": "JNJ", "sector": "Healthcare", "shares": 40, "price": 152.30, "beta": 0.6},
+    {"ticker": "JPM", "sector": "Financials", "shares": 25, "price": 210.10, "beta": 1.15},
+    {"ticker": "XOM", "sector": "Energy", "shares": 35, "price": 118.75, "beta": 0.9}
+  ],
+  "price_history": {},
+  "benchmark_history": [],
+  "confidence_level": 0.95,
+  "risk_free_rate": 0.04
+};
+
+function genReturns(n, vol, drift) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    // Box-Muller for a rough gaussian
+    const u1 = Math.random(), u2 = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    out.push(Number((drift + z * vol).toFixed(5)));
+  }
+  return out;
+}
+
+function buildSample() {
+  const s = JSON.parse(JSON.stringify(SAMPLE));
+  s.holdings.forEach(h => { s.price_history[h.ticker] = genReturns(120, 0.015, 0.0004); });
+  s.benchmark_history = genReturns(120, 0.011, 0.0003);
+  return s;
+}
+
+const payloadEl = document.getElementById('payload');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+const tickerEl = document.getElementById('ticker');
+const apiBaseEl = document.getElementById('apiBase');
+
+document.getElementById('loadSample').addEventListener('click', () => {
+  const sample = buildSample();
+  payloadEl.value = JSON.stringify(sample, null, 2);
+  renderTicker(sample.holdings);
+  setStatus('Sample loaded.', 'ok');
+});
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = cls || '';
+}
+
+function renderTicker(holdings) {
+  tickerEl.innerHTML = holdings.map(h =>
+    `<span><b>${h.ticker}</b> ${h.sector} · ${h.shares}sh @ $${h.price.toFixed(2)} · β${h.beta}</span>`
+  ).join('');
+}
+
+function fmtUSD(n) {
+  return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderResults(data) {
+  const m = data.metrics;
+  const sectorRows = Object.entries(m.sector_concentration)
+    .sort((a, b) => b[1] - a[1])
+    .map(([sector, pct]) => `
+      <div class="sector-row">
+        <div class="sector-name">${sector}</div>
+        <div class="sector-bar-track"><div class="sector-bar-fill" style="width:${pct}%"></div></div>
+        <div class="sector-pct">${pct.toFixed(1)}%</div>
+      </div>
+    `).join('');
+
+  const tickers = Object.keys(m.correlation_matrix);
+  const corrTable = tickers.length ? `
+    <table class="corr">
+      <thead><tr><th></th>${tickers.map(t => `<th>${t}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${tickers.map(row => `
+          <tr>
+            <td>${row}</td>
+            ${tickers.map(col => `<td>${m.correlation_matrix[row][col]?.toFixed(3) ?? '—'}</td>`).join('')}
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>` : '<div class="empty-state">Not enough series to compute correlations.</div>';
+
+  const summaryParas = data.summary.split(/\n{2,}/).map(p => `<p>${p}</p>`).join('');
+
+  resultsEl.innerHTML = `
+    <section class="fig">
+      <div class="fig-label">FIG. 01 — KEY METRICS ${data.cached ? '(cached)' : ''}</div>
+      <div class="metric-cards">
+        <div class="metric-card"><div class="label">Portfolio Value</div><div class="value">${fmtUSD(m.portfolio_value)}</div></div>
+        <div class="metric-card"><div class="label">VaR (95%, 1-day)</div><div class="value brick">${fmtUSD(m.value_at_risk_95)}</div></div>
+        <div class="metric-card"><div class="label">VaR % of Portfolio</div><div class="value brick">${m.value_at_risk_pct.toFixed(2)}%</div></div>
+        <div class="metric-card"><div class="label">Sharpe Ratio</div><div class="value teal">${m.sharpe_ratio.toFixed(2)}</div></div>
+        <div class="metric-card"><div class="label">Beta-Weighted Exposure</div><div class="value">${m.beta_weighted_exposure.toFixed(2)}</div></div>
+      </div>
+    </section>
+
+    <section class="fig">
+      <div class="fig-label">FIG. 02 — SECTOR CONCENTRATION</div>
+      ${sectorRows}
+    </section>
+
+    <section class="fig">
+      <div class="fig-label">FIG. 03 — CORRELATION MATRIX</div>
+      ${corrTable}
+    </section>
+
+    <section class="fig">
+      <div class="fig-label">FIG. 04 — AI-GENERATED SUMMARY</div>
+      <div class="summary-card">${summaryParas}</div>
+    </section>
+  `;
+}
+
+document.getElementById('submit').addEventListener('click', async () => {
+  let payload;
+  try {
+    payload = JSON.parse(payloadEl.value);
+  } catch (e) {
+    setStatus('Invalid JSON payload.', 'err');
+    return;
+  }
+
+  const base = apiBaseEl.value.replace(/\/$/, '');
+  setStatus('Requesting summary…');
+  document.getElementById('submit').disabled = true;
+
+  try {
+    const res = await fetch(`${base}/api/v1/portfolio/summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Request failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    renderTicker(payload.holdings);
+    renderResults(data);
+    setStatus('Done.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Request failed. Is the backend running?', 'err');
+  } finally {
+    document.getElementById('submit').disabled = false;
+  }
+});
+
+// Pre-fill with sample on load for convenience
+payloadEl.value = JSON.stringify(buildSample(), null, 2);
+</script>
+</body>
+</html>
