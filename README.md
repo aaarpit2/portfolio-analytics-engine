@@ -118,9 +118,7 @@ cp .env.example .env
 ```
 
 By default the project uses Anthropic's **Claude Haiku 4.5** (`LLM_PROVIDER=anthropic`,
-`ANTHROPIC_MODEL=claude-haiku-4-5-20251001`) — the cheapest current Claude model,
-at roughly $1/$5 per million input/output tokens, versus $3/$15 for Sonnet or
-$5/$25 for Opus. For a portfolio summary of this size, cost per request is a
+`ANTHROPIC_MODEL=claude-haiku-4-5-20251001`) — the cheapest current Claude model. For a portfolio summary of this size, cost per request is a
 fraction of a cent.
 
 To use OpenAI instead — e.g. with an existing API key — set in `.env`:
@@ -129,9 +127,9 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.4-mini
 ```
-GPT-5.4 Mini (~$0.75/$4.50 per million tokens) is OpenAI's low-cost tier that
+GPT-5.4 Mini is OpenAI's low-cost tier that
 still handles narrative generation well. GPT-5.4 Nano is even cheaper
-(~$0.20/$1.25) if you want to push cost down further, at some quality cost —
+if you want to push cost down further, at some quality cost —
 worth testing against your own compliance requirements before relying on it.
 Note: a ChatGPT subscription (Plus/Pro/Team) is billed separately from the OpenAI
 **API**, which is pay-as-you-go against its own API key from
@@ -199,15 +197,3 @@ and historical risk metrics — not recommendations, predictions, or advice. The
 guardrails layer (`app/rag/guardrails.py`) strips/blocks forward-looking or prescriptive
 language (e.g. "you should buy/sell", "will outperform"). This is not a substitute for
 legal/compliance review if you ever take this beyond a personal project.
-
-## Pushing to GitHub
-
-```bash
-cd portfolio-analytics-engine
-git init
-git add .
-git commit -m "Initial scaffold: analytics engine + RAG summary pipeline"
-git branch -M main
-git remote add origin https://github.com/<your-username>/portfolio-analytics-engine.git
-git push -u origin main
-```
