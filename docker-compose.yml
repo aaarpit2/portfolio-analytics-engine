@@ -26,16 +26,14 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./app:/app/app        # live-reload friendly bind mount for local dev
+      - ./app:/app/app # live-reload friendly bind mount for local dev
       - ./data:/app/data
 
   frontend:
-    image: nginx:alpine
+    build: ./frontend
     container_name: portfolio-frontend
     ports:
       - "3000:80"
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
     depends_on:
       - backend
 
