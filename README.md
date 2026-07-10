@@ -99,11 +99,13 @@ concentration, correlation matrix) alongside the AI-generated narrative summary.
 ## Manual local setup (no Docker)
 
 ### 1. Prerequisites
+
 - Python 3.11+
 - Redis running locally (`brew install redis` on Mac, or Docker: `docker run -p 6379:6379 redis`)
 - An Anthropic API key: https://console.anthropic.com/
 
 ### 2. Clone/init and create a virtual environment
+
 ```bash
 cd portfolio-analytics-engine
 python3 -m venv venv
@@ -112,6 +114,7 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configure environment
+
 ```bash
 cp .env.example .env
 # then edit .env and add your API key
@@ -122,11 +125,13 @@ By default the project uses Anthropic's **Claude Haiku 4.5** (`LLM_PROVIDER=anth
 fraction of a cent.
 
 To use OpenAI instead — e.g. with an existing API key — set in `.env`:
+
 ```
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.4-mini
 ```
+
 GPT-5.4 Mini is OpenAI's low-cost tier that
 still handles narrative generation well. GPT-5.4 Nano is even cheaper
 if you want to push cost down further, at some quality cost —
@@ -139,11 +144,13 @@ doesn't include API access; that's a separate key from https://console.anthropic
 Only one provider needs to be configured; you don't need both.
 
 ### 4. Run Redis (if not already running)
+
 ```bash
 redis-server
 ```
 
 ### 5. Run the API
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
@@ -151,40 +158,118 @@ uvicorn app.main:app --reload --port 8000
 Visit http://127.0.0.1:8000/docs for interactive Swagger UI.
 
 ### 6. Try it
+
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/portfolio/summary \
   -H "Content-Type: application/json" \
   -d @data/sample_portfolio.json
 ```
 
+## MCP server (exposing this to AI assistants directly)
+
+`mcp_server/server.py` wraps the same analytics + RAG pipeline as three MCP
+tools, so an MCP-compatible AI assistant (Claude Desktop, Claude Code, etc.)
+can call directly into real portfolio data and computed risk metrics instead
+of you manually pasting JSON into a chat:
+
+- `compute_risk_metrics` — VaR, Sharpe, beta exposure, sector concentration, correlation matrix
+- `generate_portfolio_summary` — the full grounded AI narrative summary
+- `get_sample_portfolio` — returns the sample fixture, for quick testing
+
+### Run it
+
+\`\`\`bash
+pip install -r requirements.txt # includes the mcp package
+python mcp_server/server.py
+\`\`\`
+This starts the server on stdio — local MCP clients spawn the process directly rather than connecting over a port.
+
+### Connect it to Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+\`\`\`json
+{
+"mcpServers": {
+"portfolio-analytics": {
+"command": "python",
+"args": ["/absolute/path/to/portfolio-analytics-engine/mcp_server/server.py"],
+"env": {
+"ANTHROPIC_API_KEY": "sk-ant-...",
+"PORTFOLIO_MCP_API_KEY": "optional-shared-secret"
+}
+}
+}
+}
+\`\`\`
+
+### Security note
+
+Each tool call is gated behind an `api_key` argument checked against
+`PORTFOLIO_MCP_API_KEY` if set. This is a baseline guard for this reference
+implementation, not a substitute for proper auth in production — a real
+enterprise deployment over a network transport should sit behind OAuth,
+mTLS, or an API gateway rather than relying on this key check alone.
+
 ## Project layout
 
 ```
 portfolio-analytics-engine/
-├── app/
-│   ├── main.py                  # FastAPI app entrypoint
-│   ├── config.py                # env/config loading
-│   ├── models/schemas.py        # Pydantic request/response models
+├── app/                                # FastAPI backend
+│   ├── __init__.py
+│   ├── main.py                         # FastAPI app entrypoint
+│   ├── config.py                       # env/config loading (LLM_PROVIDER switch, etc.)
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py                  # Pydantic request/response models
 │   ├── analytics/
-│   │   ├── portfolio_data.py    # loads/validates portfolio + market data
-│   │   └── risk_metrics.py      # VaR, Sharpe, beta, sector concentration, correlation
+│   │   ├── __init__.py
+│   │   ├── portfolio_data.py           # loads/validates portfolio + market data
+│   │   └── risk_metrics.py             # VaR, Sharpe, beta, sector concentration, correlation
 │   ├── rag/
-│   │   ├── retriever.py         # builds grounded context from computed metrics
-│   │   ├── prompt_templates.py  # prompt construction
-│   │   ├── guardrails.py        # compliance filtering (no "investment advice" language)
-│   │   └── llm_client.py        # Anthropic API wrapper
-│   ├── cache/redis_cache.py     # caching layer
-│   └── api/routes.py            # FastAPI routes
+│   │   ├── __init__.py
+│   │   ├── retriever.py                # builds grounded context from computed metrics
+│   │   ├── prompt_templates.py         # prompt construction
+│   │   ├── guardrails.py               # compliance filtering
+│   │   └── llm_client.py               # Anthropic + OpenAI client (provider-switchable)
+│   ├── cache/
+│   │   ├── __init__.py
+│   │   └── redis_cache.py              # caching layer
+│   └── api/
+│       ├── __init__.py
+│       └── routes.py                   # FastAPI routes
+│
+├── mcp_server/
+│   └── server.py                       # MCP server exposing the same pipeline as tools
+│
+├── frontend/                           # React (Vite) dashboard
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html                      # Vite entry point
+│   ├── Dockerfile                      # multi-stage build → nginx
+│   ├── .gitignore
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── styles.css
+│       ├── sampleData.js
+│       └── components/
+│           ├── Ticker.jsx
+│           ├── InputPanel.jsx
+│           ├── MetricCards.jsx
+│           ├── SectorConcentration.jsx
+│           ├── CorrelationMatrix.jsx
+│           └── SummaryCard.jsx
+│
 ├── tests/
 │   └── test_risk_metrics.py
+│
 ├── data/
 │   └── sample_portfolio.json
-├── frontend/
-│   └── index.html               # single-file static dashboard (no build step)
-├── Dockerfile                   # backend image
-├── docker-compose.yml           # backend + redis + frontend
+│
+├── Dockerfile                          # backend image
+├── docker-compose.yml                  # backend + redis + frontend
 ├── .dockerignore
-├── requirements.txt
+├── requirements.txt                    # includes mcp==1.28.1
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -192,7 +277,7 @@ portfolio-analytics-engine/
 
 ## Compliance note
 
-This project generates *descriptive* summaries of a portfolio's existing composition
+This project generates _descriptive_ summaries of a portfolio's existing composition
 and historical risk metrics — not recommendations, predictions, or advice. The
 guardrails layer (`app/rag/guardrails.py`) strips/blocks forward-looking or prescriptive
 language (e.g. "you should buy/sell", "will outperform"). This is not a substitute for
